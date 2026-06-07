@@ -22,15 +22,30 @@ def chat_with_openai(message, history):
 
     if history:
         for msg in history:
-            messages.append({"role": msg["role"], "content": msg["content"]})
+            messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
 
-    messages.append({"role": "user", "content": message})
+    messages.append({
+        "role": "user",
+        "content": message
+    })
 
-    response = client.chat.completions.create(
+    stream = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=messages,
         max_tokens=500,
+        stream=True,
     )
 
-    return response.choices[0].message.content
+    partial = ""
+
+    for chunk in stream:
+        if chunk.choices:
+            delta = chunk.choices[0].delta.content
+
+            if delta:
+                partial += delta
+                yield partial
 
