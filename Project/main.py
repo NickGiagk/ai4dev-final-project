@@ -1,21 +1,6 @@
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-from openai import OpenAI
-
 from fastapi import FastAPI
 import gradio as gr
 from gradioUI import create_ui
-
-#############################
-# OpenAI connection
-#############################
-load_dotenv(Path.cwd().parent / ".env")
-
-client = OpenAI()
-
-if client:
-    print("openAI connected")
 
 #############################
 # FastAPI + Gradio          
