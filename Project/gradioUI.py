@@ -16,7 +16,13 @@ def create_ui():
             with gr.Column():
                 gr.ChatInterface(
                     fn=chat_wrapper,
-                    show_progress="minimal"
+                    show_progress="minimal",
+                    chatbot=gr.Chatbot(value=[
+                        {
+                            "role": "assistant",
+                            "content": "Hello! I'm your AI assistant. How can I assist you?"
+                        }
+                    ])
                 )
 
             with gr.Column():

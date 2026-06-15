@@ -1,0 +1,57 @@
+{
+  "mortgage": {
+    "label": "Mortgage Loan",
+    "required_documents": [
+      {
+        "name": "Proof of Income",
+        "keywords": ["pay stub", "salary", "income statement"]
+      },
+      {
+        "name": "Bank Statement",
+        "keywords": ["bank statement", "account balance", "transaction history"]
+      },
+      {
+        "name": "Tax Return",
+        "keywords": ["tax return", "form 1040", "annual income tax"]
+      },
+      {
+        "name": "Government ID",
+        "keywords": ["passport", "driver license", "national id"]
+      }
+    ]
+  },
+  "personal_loan": {
+    "label": "Personal Loan",
+    "required_documents": [
+      {
+        "name": "Proof of Income",
+        "keywords": ["pay stub", "salary", "income statement"]
+      },
+      {
+        "name": "Bank Statement",
+        "keywords": ["bank statement", "account balance", "transaction history"]
+      },
+      {
+        "name": "Government ID",
+        "keywords": ["passport", "driver license", "national id"]
+      }
+    ]
+  },
+  "auto_loan": {
+    "label": "Auto Loan",
+    "required_documents": [
+      {
+        "name": "Proof of Income",
+        "keywords": ["pay stub", "salary", "income statement"]
+      },
+      {
+        "name": "Proof of Insurance",
+        "keywords": ["insurance policy", "auto insurance", "coverage"]
+      },
+      {
+        "name": "Government ID",
+        "keywords": ["passport", "driver license", "national id"]
+      }
+    ]
+  }
+}
