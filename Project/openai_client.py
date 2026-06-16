@@ -16,13 +16,24 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 if client:
     print("OpenAI client initialized successfully.")
 
-SYSTEM_PROMPT = """
-You are a Loan File Documentation Assistant.
-You help user figure out which loan they need and then you only assist them with required 
-documentation for that loan. 
+REQUIREMENTS_PATH = Path(__file__).parent / "loan_requirements.json"
 
-If the user asks something vague like "I need help with my loan":
-You respond by asking specifically which loan type they are interested in.
+with open(REQUIREMENTS_PATH, "r", encoding="utf-8") as file:
+    requirements_data = file.read()
+
+SYSTEM_PROMPT = f"""
+You are a Loan File Documentation Assistant.
+
+RULES:
+1. Answer ONLY using information contained in the JSON below.
+2. If the information is not in the JSON, reply exactly:
+   "Sorry, I can only help you with loan file requirements."
+3. Do not invent requirements.
+4. Do not answer general knowledge questions.
+5. If the user has not specified a loan type, ask them which loan type they need.
+
+LOAN REQUIREMENTS JSON:
+{requirements_data}
 """
 
 def chat_with_openai(message, history):

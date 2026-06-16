@@ -1,9 +1,10 @@
 import random
 
 KEYWORDS = [
-    "loan", "mortgage", "documents", "papers", "income",
-    "bank statement", "employment", "pdf", "upload",
-    "requirements", "application", "credit", "personal loan", "auto loan"
+    "loan", "mortgage", "documents", "papers", "income", "proof", "pay", "salary", "income", "bank",
+    "bank statement", "employment", "pdf", "upload", "files", "file", "tax", "id", "identification",
+    "requirements", "application", "credit", "personal loan", "auto loan", "car", "home", "house", "bike",
+    "motorcycle", "motorbike"
 ]
 
 OFF_TOPIC_RESPONSES = [

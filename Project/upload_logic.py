@@ -1,4 +1,3 @@
-# upload_logic.py
 import os
 import shutil
 

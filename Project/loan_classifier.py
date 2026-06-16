@@ -23,7 +23,6 @@ Rules:
 - If the user explicitly switches to a different loan type, respond with the new one.
 """
 
-
 def classify_loan_type(message, history, current_loan_type="none"):
     messages = [{"role": "system", "content": CLASSIFIER_SYSTEM_PROMPT}]
 
@@ -53,7 +52,6 @@ def classify_loan_type(message, history, current_loan_type="none"):
         return current_loan_type
 
     return result
-
 
 def render_checklist(loan_type):
     if loan_type not in LOAN_REQUIREMENTS or loan_type == "none":
