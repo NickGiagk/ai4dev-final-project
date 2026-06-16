@@ -1,8 +1,18 @@
 import os
-import shutil
+from pathlib import Path
 
-UPLOAD_DIR = "uploaded_pdfs"
+UPLOAD_DIR = str(Path(__file__).parent / "uploaded_pdfs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+def save_pdf_file(filename: str, content: bytes) -> str:
+    if not filename.lower().endswith(".pdf"):
+        raise ValueError(f"{filename} is not a PDF file.")
+
+    save_path = os.path.join(UPLOAD_DIR, filename)
+    with open(save_path, "wb") as f:
+        f.write(content)
+
+    return save_path
 
 def save_uploaded_pdf(files, log):
     if files is None:
@@ -12,16 +22,13 @@ def save_uploaded_pdf(files, log):
         files = [files]
 
     for file in files:
-        temp_path = file.name
-        filename = os.path.basename(temp_path)
-
-        if not filename.lower().endswith(".pdf"):
-            log.append(f"Error: {filename} is not a PDF file.")
-            return log, "\n".join(log)
-
-        save_path = os.path.join(UPLOAD_DIR, filename)
-        shutil.copy(temp_path, save_path)
-
-        log.append(f"Successfully uploaded {filename}!")
+        filename = os.path.basename(file.name)
+        try:
+            with open(file.name, "rb") as f:
+                content = f.read()
+            save_pdf_file(filename, content)
+            log.append(f"Successfully uploaded {filename}!")
+        except ValueError as e:
+            log.append(f"Error: {e}")
 
     return log, "\n".join(log)
