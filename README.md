@@ -2,9 +2,13 @@
 ## Final Project for AI for Developers seminar
 
 Frontend: gradio
+
 Backend: python,fastAPI
+
 AI: openAI
+
 Documents processing: text based PDFs
+
 
 ### <u>Below User Story:</u>
 Main screen :
