@@ -1,7 +1,10 @@
 import os
+import re
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
+from loan_classifier import CLASSIFIER_SYSTEM_PROMPT, VALID_LOAN_TYPES
 
 load_dotenv(Path.cwd().parent / ".env")
 
@@ -21,27 +24,37 @@ REQUIREMENTS_PATH = Path(__file__).parent / "loan_requirements.json"
 with open(REQUIREMENTS_PATH, "r", encoding="utf-8") as file:
     requirements_data = file.read()
 
-SYSTEM_PROMPT = f"""
-You are a friendly Loan File Documentation Assistant.
-Your job is to help users understand which documents they need for their loan application.
+UNIFIED_SYSTEM_PROMPT = f"""
+{CLASSIFIER_SYSTEM_PROMPT}
 
-RULES:
-1. Be conversational and helpful. You may greet the user, ask clarifying questions,
-   and guide them naturally through the process.
-2. When listing required documents for a loan, use ONLY the documents defined in the
-   LOAN REQUIREMENTS JSON below. Do not invent or add extra requirements.
-3. If the user has not specified a loan type yet, ask them which one they are interested in.
-4. If the user asks something completely unrelated to loans or documents
-   (e.g. weather, sports, coding), politely decline and redirect to loan topics.
-5. Keep answers concise and friendly.
+You are also the loan document assistant.
+Answer the user's question using the loan requirements JSON below.
+If the user asks about a specific document or validation step, explain what documents are required and what is missing.
+If the user asks about the current loan, or if the prompt is about changing loans,
+return the loan type in the [LOAN_TYPE: <type>] marker at the top.
 
 LOAN REQUIREMENTS JSON:
 {requirements_data}
 """
 
 
-def chat_with_openai(message, history):
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+def extract_loan_type_from_response(response, current_loan_type="none"):
+    match = re.search(r'^\[LOAN_TYPE:\s*([^\]]+)\]', response, re.IGNORECASE)
+    if not match:
+        return current_loan_type
+
+    extracted = match.group(1).strip().lower()
+    normalized = extracted.replace(" ", "_")
+    if normalized in VALID_LOAN_TYPES:
+        return normalized
+    if extracted in VALID_LOAN_TYPES:
+        return extracted
+    return current_loan_type
+
+
+def _build_chat_messages(message, history, current_loan_type="none"):
+    messages = [{"role": "system", "content": UNIFIED_SYSTEM_PROMPT}]
+    messages.append({"role": "system", "content": f"Current loan type context: {current_loan_type}."})
 
     for item in history:
         if isinstance(item, dict):
@@ -49,7 +62,6 @@ def chat_with_openai(message, history):
             content = item.get("content")
             if role and content:
                 messages.append({"role": role, "content": content})
-
         elif isinstance(item, tuple):
             if len(item) >= 1 and item[0]:
                 messages.append({"role": "user", "content": item[0]})
@@ -57,14 +69,45 @@ def chat_with_openai(message, history):
                 messages.append({"role": "assistant", "content": item[1]})
 
     messages.append({"role": "user", "content": message})
+    return messages
 
-    partial = ""
-    for chunk in client.chat.completions.create(
+
+def chat_with_loan_classification(message, history, current_loan_type="none"):
+    messages = _build_chat_messages(message, history, current_loan_type)
+
+    response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=messages,
+        temperature=0.7
+    )
+
+    full_response = response.choices[0].message.content
+    loan_type = extract_loan_type_from_response(full_response, current_loan_type)
+    clean_response = re.sub(r'^\[LOAN_TYPE:\s*[^\]]+\]\s*', '', full_response, flags=re.IGNORECASE).strip()
+
+    return loan_type, clean_response
+
+
+def stream_chat_with_loan_classification(message, history, current_loan_type="none"):
+    messages = _build_chat_messages(message, history, current_loan_type)
+
+    stream = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=messages,
+        temperature=0.7,
         stream=True
-    ):
-        delta = chunk.choices[0].delta
-        if delta and delta.content:
-            partial += delta.content
-            yield partial
+    )
+
+    accumulated = ""
+    for chunk in stream:
+        delta = getattr(chunk.choices[0], "delta", None)
+        content = ""
+        if delta is not None:
+            content = getattr(delta, "content", "")
+        if content:
+            accumulated += content
+            yield accumulated, False, None
+
+    loan_type = extract_loan_type_from_response(accumulated, current_loan_type)
+    clean_response = re.sub(r'^\[LOAN_TYPE:\s*[^\]]+\]\s*', '', accumulated, flags=re.IGNORECASE).strip()
+    yield clean_response, True, loan_type

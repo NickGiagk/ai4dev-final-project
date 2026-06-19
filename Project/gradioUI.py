@@ -1,9 +1,8 @@
 import os
 import requests
 import gradio as gr
-from openai_client import chat_with_openai
-from loan_guardrail import guarded_chat
-from loan_classifier import classify_loan_type, render_checklist, LOAN_REQUIREMENTS
+from openai_client import chat_with_loan_classification, stream_chat_with_loan_classification
+from loan_classifier import render_checklist, LOAN_REQUIREMENTS
 
 FASTAPI_BASE = "http://127.0.0.1:8000"
 
@@ -50,27 +49,45 @@ def build_upload_feedback(filename, result, validation_state, loan_type_state):
 
 
 def chat_wrapper(message, history, loan_type_state, validation_state):
-    # 1. Classify loan type
-    new_loan_type = classify_loan_type(message, history, loan_type_state)
+    # First show the user's message immediately, then continue with AI processing.
+    history_with_user = history + [{"role": "user", "content": message}]
+    checklist_text = render_checklist_from_state(loan_type_state, validation_state)
+    yield history_with_user, checklist_text, loan_type_state, validation_state, None, None, None
 
-    # 2. Reset validation state if loan type changed
-    if new_loan_type != loan_type_state:
-        validation_state = {}
+    for partial_response, is_final, new_loan_type in stream_chat_with_loan_classification(
+        message, history, loan_type_state
+    ):
+        if not is_final:
+            yield (
+                history_with_user + [{"role": "assistant", "content": partial_response}],
+                checklist_text,
+                loan_type_state,
+                validation_state,
+                None,
+                None,
+                None
+            )
+            continue
 
-    checklist_text = render_checklist_from_state(new_loan_type, validation_state)
+        upload_update = None
+        upload_log_update = None
+        output_update = None
 
-    # 3. Stream reply using dict message format
-    partial = ""
-    for chunk in guarded_chat(message, history, chat_with_openai):
-        partial = chunk
+        if new_loan_type != loan_type_state:
+            validation_state = {}
+            upload_update = gr.update(value=None)
+            upload_log_update = []
+            output_update = gr.update(value="")
+
+        checklist_text = render_checklist_from_state(new_loan_type, validation_state)
         yield (
-            history + [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": partial}
-            ],
+            history_with_user + [{"role": "assistant", "content": partial_response}],
             checklist_text,
             new_loan_type,
-            validation_state
+            validation_state,
+            upload_update,
+            upload_log_update,
+            output_update
         )
 
 
@@ -79,6 +96,9 @@ def handle_upload(files, history, log, loan_type_state, validation_state):
     Uploads and validates each file, updates checklist state,
     and injects feedback directly into the chat history.
     """
+    if log is None:
+        log = []
+
     if files is None:
         checklist_text = render_checklist_from_state(loan_type_state, validation_state)
         return history, log, "\n".join(log), checklist_text, validation_state
@@ -184,6 +204,7 @@ def render_checklist_from_state(loan_type, validation_state):
 
 def create_ui():
     with gr.Blocks() as app:
+        gr.HTML("<h1 style='text-align:center;'>Loan Documentation Assistant</h1><hr>")
 
         loan_type_state = gr.State("none")
         validation_state = gr.State({})
@@ -198,9 +219,11 @@ def create_ui():
 
         with gr.Row():
             with gr.Column():
+                gr.Markdown("### Chat with the AI Assistant")
                 chatbot = gr.Chatbot(
                     value=[{"role": "assistant", "content": "Hello! I'm your AI assistant. How can I assist you?"}],
-                    height=500
+                    height=500,
+                    autoscroll=True
                 )
                 msg_input = gr.Textbox(
                     placeholder="Type your message here...",
@@ -208,23 +231,30 @@ def create_ui():
                     submit_btn=True
                 )
 
-                msg_input.submit(
+                submit_event = msg_input.submit(
                     fn=lambda msg: (msg, ""),
                     inputs=[msg_input],
                     outputs=[pending_msg, msg_input]
-                ).then(
-                    fn=chat_wrapper,
-                    inputs=[pending_msg, chatbot, loan_type_state, validation_state],
-                    outputs=[chatbot, checklist, loan_type_state, validation_state]
                 )
 
             with gr.Column():
+                gr.Markdown("### Document Checklist")
                 checklist.render()
 
+        gr.HTML("<hr><h3>Upload your PDF documents below. The AI will validate them against the checklist.</h3>")
+        gr.Markdown("### Upload files Area")
         with gr.Row():
             upload = gr.File(label="Upload PDF", file_count="multiple")
             output = gr.Textbox(label="Upload Log", lines=8)
             upload_log = gr.State([])
+
+            submit_event.then(
+                fn=chat_wrapper,
+                inputs=[pending_msg, chatbot, loan_type_state, validation_state],
+                outputs=[chatbot, checklist, loan_type_state, validation_state, upload, upload_log, output],
+                scroll_to_output=True,
+                stream_every=0.1
+            )
 
             upload.change(
                 fn=handle_upload,
