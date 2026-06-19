@@ -6,7 +6,7 @@ Backend: python,fastAPI
 AI: openAI
 Documents processing: text based PDFs
 
-###<u>Below User Story:</u>
+### <u>Below User Story:</u>
 Main screen :
 <img width="1902" height="900" alt="main" src="https://github.com/user-attachments/assets/46bfe2c6-d159-453b-9f68-8d6ca5445e62" />
 
