@@ -14,7 +14,7 @@ Documents processing: text based PDFs
 Main screen :
 <img width="1902" height="900" alt="main" src="https://github.com/user-attachments/assets/46bfe2c6-d159-453b-9f68-8d6ca5445e62" />
 
-User wantes a mortgage loan : 
+User wants a mortgage loan : 
 <img width="1892" height="898" alt="house_loan" src="https://github.com/user-attachments/assets/39d02ade-0a9d-4163-9eed-07e195a2ff73" />
 
 Uploads multiple files (not necessary correct) :
